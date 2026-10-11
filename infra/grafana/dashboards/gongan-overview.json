@@ -1,0 +1,159 @@
+{
+  "uid": "gongan-overview",
+  "title": "工安卫士 · 后端总览",
+  "tags": ["gongan", "fastapi"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "请求速率 QPS（全局）",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 12, "lineWidth": 2 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(gongan_http_requests_total[1m]))",
+          "legendFormat": "QPS"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "请求速率 QPS（按路径）",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 12, "lineWidth": 2 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (path) (rate(gongan_http_requests_total[1m]))",
+          "legendFormat": "{{path}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "接口延迟 P50 / P95 / P99",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 8, "lineWidth": 2 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(gongan_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "P50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(gongan_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "P95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gongan_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "5xx 错误率（5 分钟）",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 2 }, { "color": "red", "value": 10 } ] } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(gongan_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(gongan_http_requests_total[5m])), 0.001)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "进行中请求",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 20 } ] } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(gongan_http_requests_in_progress)"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "状态码分布（5 分钟窗口）",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(gongan_http_requests_total[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "平均耗时 Top5 路径",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 } ] } }, "overrides": [] },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "showUnfilled": false },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(5, sum by (path) (rate(gongan_http_request_duration_seconds_sum[5m])) / clamp_min(sum by (path) (rate(gongan_http_request_duration_seconds_count[5m])), 0.001))",
+          "legendFormat": "{{path}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "后端进程资源（内存 / CPU）",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [
+        {
+          "matcher": { "id": "byName", "options": "内存 RSS" },
+          "properties": [ { "id": "unit", "value": "bytes" } ]
+        },
+        {
+          "matcher": { "id": "byName", "options": "CPU 核" },
+          "properties": [ { "id": "unit", "value": "none" } ]
+        }
+      ] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{job=\"gongan-backend\"}",
+          "legendFormat": "内存 RSS"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(process_cpu_seconds_total{job=\"gongan-backend\"}[1m])",
+          "legendFormat": "CPU 核"
+        }
+      ]
+    }
+  ]
+}
+

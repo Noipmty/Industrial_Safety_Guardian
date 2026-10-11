@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # FastAPI 后端 /metrics（生产环境经 compose 网络服务名直连）
+  - job_name: "gongan-backend"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]
+        labels:
+          service: backend
+          env: prod
+
+  # 自监控
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

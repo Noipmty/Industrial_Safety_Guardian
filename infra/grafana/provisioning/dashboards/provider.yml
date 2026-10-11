@@ -1,0 +1,13 @@
+# 仪表盘提供者：扫描 /var/lib/grafana/dashboards 下的 JSON
+apiVersion: 1
+
+providers:
+  - name: gongan-dashboards
+    orgId: 1
+    folder: 工安卫士
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,13 @@
+# 缩小 build context（.venv 动辄数 GB）
+.venv/
+__pycache__/
+**/__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+uploads/
+tests/
+eval/
+.env
+kb_verify.txt
+kb_verify_err.txt
