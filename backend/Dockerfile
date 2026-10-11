@@ -38,6 +38,9 @@ RUN uv pip compile \
       --extra-index-url ${TORCH_CPU_INDEX} \
       -r requirements.txt
 
+# 生产 WSGI 服务器（独立一层安装，避免改动 pyproject 使 torch 大层缓存失效）
+RUN uv pip install --system --no-cache --index-url ${PYPI_INDEX} gunicorn
+
 # ---------- 阶段 2：运行时 ----------
 FROM python:3.12-slim AS runtime
 
@@ -78,4 +81,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Gunicorn + Uvicorn worker（worker 数等经 gunicorn_conf.py 读取 GUNICORN_* 环境变量，便于 compose 覆盖）
-CMD ["gunicorn", "app.main:app", "-c", "gunicorn.conf.py"]
+CMD ["gunicorn", "app.main:app", "-c", "gunicorn_conf.py"]
