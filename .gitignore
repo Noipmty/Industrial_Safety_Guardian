@@ -23,7 +23,8 @@ backend/uploads/
 backend/kb_verify*.txt
 
 # ===== 模型权重（2.1GB，单独传输，不入库）=====
-models/
+# 模型权重只排除仓库根目录的 models/（加 / 锚定根目录，避免误伤 backend/app/models ORM 代码目录）
+/models/
 
 # ===== 内部文档（不入公开仓库）=====
 项目总结.md
