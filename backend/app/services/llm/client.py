@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +22,18 @@ from app.core.logger import get_logger
 logger = get_logger(__name__)
 
 _DEFAULT_KEY = "sk-your-api-key"
+
+# 思考型模型（qwen3.x / deepseek-v4 / kimi 等混合推理模型）可能把推理过程
+# 以 <think> 标签混在正文里，需剥掉后再做 JSON 解析
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def strip_think(text: str) -> str:
+    """剥除思考型模型输出中的 <think> 块（含未闭合的悬挂 <think>）。"""
+    text = _THINK_RE.sub("", text)
+    if "<think>" in text:  # 未闭合：丢弃 <think> 起的全部内容
+        text = text.split("<think>")[0]
+    return text.strip()
 
 
 @dataclass(slots=True)
@@ -37,8 +50,8 @@ class LLMResponse:
             self.usage = {}
 
     def json(self) -> Any:
-        """把内容解析为 JSON，容忍代码围栏与 JSON 后的多余文本。"""
-        text = self.content.strip()
+        """把内容解析为 JSON，容忍思考块、代码围栏与 JSON 后的多余文本。"""
+        text = strip_think(self.content)
         fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
         if fence:
             text = fence.group(1).strip()
@@ -147,21 +160,42 @@ class LLMClient:
             metadata={"route": route, "base_url": base_url},
         )
         async with httpx.AsyncClient(timeout=self._timeout) as client:
+            # 逃生舱：LLM_EXTRA_BODY（JSON 字符串）原样合并进请求体，
+            # 例如 {"enable_thinking": false} 可关闭思考型模型的推理模式
+            body: dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            extra_body = os.getenv("LLM_EXTRA_BODY", "").strip()
+            if extra_body:
+                try:
+                    body.update(json.loads(extra_body))
+                except json.JSONDecodeError:
+                    logger.warning("LLM_EXTRA_BODY 不是合法 JSON，已忽略: %s", extra_body)
             for attempt in range(self._max_retries + 1):
                 try:
                     resp = await client.post(
                         f"{base_url.rstrip('/')}/chat/completions",
                         headers={"Authorization": f"Bearer {api_key}"},
-                        json={
-                            "model": model,
-                            "messages": messages,
-                            "temperature": temperature,
-                            "max_tokens": max_tokens,
-                        },
+                        json=body,
                     )
                     resp.raise_for_status()
                     payload = resp.json()
-                    content = payload["choices"][0]["message"]["content"]
+                    message = payload["choices"][0]["message"]
+                    content = message.get("content") or ""
+                    if not content.strip():
+                        # 思考型模型可能把输出全部写进 reasoning_content（正文为空）
+                        reasoning = message.get("reasoning_content") or ""
+                        if reasoning.strip():
+                            logger.info(
+                                "LLM %s empty content, falling back to reasoning_content (%s chars)",
+                                route,
+                                len(reasoning),
+                            )
+                            content = reasoning
+                    content = strip_think(content)
                     usage = payload.get("usage", {})
                     lf.lf_finish_generation(gen, output=content, usage=usage)
                     return LLMResponse(
