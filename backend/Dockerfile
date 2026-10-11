@@ -1,6 +1,13 @@
 # ---------- 阶段 1：构建器 ----------
 FROM python:3.12-slim AS builder
 
+# 国内网络加固：PyPI 走清华源。注意 uv 的索引优先级与 pip 相反：
+# --extra-index-url 会先于 --index-url 被检索，因此 torch CPU 源必须作为
+# extra index，才能在 torch 解析时先命中 CPU 版（否则会拉到 PyPI 的
+# CUDA 版 torch，连带下载 ~2.5GB 的 nvidia-* 依赖）
+ARG PYPI_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+ARG TORCH_CPU_INDEX=https://download.pytorch.org/whl/cpu
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -14,16 +21,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 uv 以加速依赖解析
-RUN pip install --no-cache-dir uv
-
-# 预装 CPU 版 torch（容器内 BGE-M3 推理无需 CUDA；先装可避免 uv 从 PyPI 拉取 ~2.5GB 的 CUDA 版）
-RUN uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+# 安装 uv 以加速依赖解析（uv 本体也从清华源拉）
+RUN pip install --no-cache-dir -i ${PYPI_INDEX} uv
 
 COPY pyproject.toml ./
 # 仅同步依赖（暂不安装项目本身 —— 保持层缓存稳定）
-RUN uv pip compile --output-file=requirements.txt pyproject.toml \
-    && uv pip install --system -r requirements.txt
+RUN uv pip compile \
+      --index-url ${PYPI_INDEX} \
+      --extra-index-url ${TORCH_CPU_INDEX} \
+      --output-file=requirements.txt pyproject.toml \
+    && uv pip install --system \
+      --index-url ${PYPI_INDEX} \
+      --extra-index-url ${TORCH_CPU_INDEX} \
+      -r requirements.txt
 
 # ---------- 阶段 2：运行时 ----------
 FROM python:3.12-slim AS runtime

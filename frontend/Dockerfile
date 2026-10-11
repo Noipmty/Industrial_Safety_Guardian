@@ -4,7 +4,9 @@ FROM node:20-alpine AS builder
 WORKDIR /build
 
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund
+# 国内网络加固：npm 走淘宝镜像源
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build
