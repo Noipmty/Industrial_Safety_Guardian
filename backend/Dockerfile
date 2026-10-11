@@ -1,12 +1,14 @@
 # ---------- 阶段 1：构建器 ----------
 FROM python:3.12-slim AS builder
 
-# 国内网络加固：PyPI 走阿里云镜像（公网 https，证书有效；内网镜像仅支持 http，
-# 容器内 https 会报证书主机名不匹配，故不用）。注意 uv 的索引优先级与 pip 相反：
+# 国内网络加固：PyPI 走阿里云内网镜像（http 协议 —— 内网镜像不支持 https，
+# 容器内走 https 会报证书主机名不匹配；ECS 公网带宽受限 ~50KB/s，内网 ~1MB/s+，
+# 实测差 20 倍。注意：此地址仅在阿里云 ECS 内网可解析，公网构建请改回
+# https://mirrors.aliyun.com/pypi/simple）。注意 uv 的索引优先级与 pip 相反：
 # --extra-index-url 会先于 --index-url 被检索，因此 torch CPU 源必须作为
 # extra index，才能在 torch 解析时先命中 CPU 版（否则会拉到 PyPI 的
 # CUDA 版 torch，连带下载 ~2.5GB 的 nvidia-* 依赖）
-ARG PYPI_INDEX=https://mirrors.aliyun.com/pypi/simple
+ARG PYPI_INDEX=http://mirrors.cloud.aliyuncs.com/pypi/simple
 ARG TORCH_CPU_INDEX=https://download.pytorch.org/whl/cpu
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
