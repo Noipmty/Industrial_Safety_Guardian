@@ -16,6 +16,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# 内网镜像走 http，uv 需显式允许非 https 主机（pip 在命令行加 --trusted-host）
+ENV UV_ALLOW_INSECURE_HOST=mirrors.cloud.aliyuncs.com
+
 WORKDIR /build
 
 # 编译 pymupdf / bcrypt / asyncpg 所需的系统依赖
@@ -26,8 +29,8 @@ RUN sed -i "s/deb.debian.org/mirrors.cloud.aliyuncs.com/g" /etc/apt/sources.list
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 uv 以加速依赖解析（uv 本体也从清华源拉）
-RUN pip install --no-cache-dir -i ${PYPI_INDEX} uv
+# 安装 uv 以加速依赖解析（--trusted-host 放行 http 内网源）
+RUN pip install --no-cache-dir -i ${PYPI_INDEX} --trusted-host mirrors.cloud.aliyuncs.com uv
 
 COPY pyproject.toml ./
 # 仅同步依赖（暂不安装项目本身 —— 保持层缓存稳定）
