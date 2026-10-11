@@ -56,12 +56,14 @@ class ExtractionResult:
 
 
 class _LLMTriple(BaseModel):
+    """宽容校验：LLM 偶尔漏掉类型/置信度字段，缺省兜底而不是整块重试报废。"""
+
     subject: str = Field(min_length=1)
-    subject_type: str = Field(min_length=1)
+    subject_type: str = Field(default="其他", min_length=1)
     relation: str = Field(min_length=1)
     object: str = Field(min_length=1)
-    object_type: str = Field(min_length=1)
-    confidence: float = Field(ge=0.0, le=1.0)
+    object_type: str = Field(default="其他", min_length=1)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class _LLMExtraction(BaseModel):
