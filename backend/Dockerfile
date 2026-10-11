@@ -1,11 +1,12 @@
 # ---------- 阶段 1：构建器 ----------
 FROM python:3.12-slim AS builder
 
-# 国内网络加固：PyPI 走清华源。注意 uv 的索引优先级与 pip 相反：
+# 国内网络加固：PyPI 走阿里云内网镜像（仅阿里云 ECS 内可解析，公网构建请改回
+# https://pypi.tuna.tsinghua.edu.cn/simple）。注意 uv 的索引优先级与 pip 相反：
 # --extra-index-url 会先于 --index-url 被检索，因此 torch CPU 源必须作为
 # extra index，才能在 torch 解析时先命中 CPU 版（否则会拉到 PyPI 的
 # CUDA 版 torch，连带下载 ~2.5GB 的 nvidia-* 依赖）
-ARG PYPI_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+ARG PYPI_INDEX=https://mirrors.cloud.aliyuncs.com/pypi/simple
 ARG TORCH_CPU_INDEX=https://download.pytorch.org/whl/cpu
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -16,8 +17,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 # 编译 pymupdf / bcrypt / asyncpg 所需的系统依赖
-# apt 源换成阿里云镜像（基础镜像内置 deb.debian.org 国内不稳）
-RUN sed -i "s/deb.debian.org/mirrors.aliyun.com/g" /etc/apt/sources.list.d/debian.sources \
+# apt 源换成阿里云内网镜像（不吃公网带宽；公网构建请改回 mirrors.aliyun.com）
+RUN sed -i "s/deb.debian.org/mirrors.cloud.aliyuncs.com/g" /etc/apt/sources.list.d/debian.sources \
     && apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
@@ -47,8 +48,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # 运行时系统依赖（bcrypt 需要 libcrypto；libgomp 为 torch 运行时依赖）
-# apt 源换成阿里云镜像（基础镜像内置 deb.debian.org 国内不稳）
-RUN sed -i "s/deb.debian.org/mirrors.aliyun.com/g" /etc/apt/sources.list.d/debian.sources \
+# apt 源换成阿里云内网镜像（不吃公网带宽；公网构建请改回 mirrors.aliyun.com）
+RUN sed -i "s/deb.debian.org/mirrors.cloud.aliyuncs.com/g" /etc/apt/sources.list.d/debian.sources \
     && apt-get update && apt-get install -y --no-install-recommends \
     libffi8 \
     libgomp1 \
