@@ -16,7 +16,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 # 编译 pymupdf / bcrypt / asyncpg 所需的系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt 源换成阿里云镜像（基础镜像内置 deb.debian.org 国内不稳）
+RUN sed -i "s/deb.debian.org/mirrors.aliyun.com/g" /etc/apt/sources.list.d/debian.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -45,7 +47,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # 运行时系统依赖（bcrypt 需要 libcrypto；libgomp 为 torch 运行时依赖）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt 源换成阿里云镜像（基础镜像内置 deb.debian.org 国内不稳）
+RUN sed -i "s/deb.debian.org/mirrors.aliyun.com/g" /etc/apt/sources.list.d/debian.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
     libffi8 \
     libgomp1 \
     curl \
