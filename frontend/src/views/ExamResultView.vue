@@ -77,6 +77,7 @@ onMounted(fetchResult);
         <h1 class="text-lg font-bold text-gray-800">
           考试结果 — 试卷 #{{ result.exam.id }}
         </h1>
+        <el-button text @click="router.push('/chat')">返回主页</el-button>
       </div>
 
       <!-- 得分汇总 -->

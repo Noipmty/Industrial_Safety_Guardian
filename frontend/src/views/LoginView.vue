@@ -121,6 +121,12 @@ function handleEnter(event: KeyboardEvent): void {
           </el-button>
         </el-form-item>
       </el-form>
+
+      <div class="demo-accounts">
+        <p class="demo-title">演示账号</p>
+        <p class="demo-row">管理员：admin / admin123</p>
+        <p class="demo-row">普通用户：worker / worker123</p>
+      </div>
     </el-card>
   </div>
 </template>
@@ -158,5 +164,26 @@ function handleEnter(event: KeyboardEvent): void {
 
 .login-button {
   width: 100%;
+}
+
+.demo-accounts {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.demo-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #909399;
+  font-weight: 600;
+}
+
+.demo-row {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #606266;
 }
 </style>

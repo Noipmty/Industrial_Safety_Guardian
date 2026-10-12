@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Clock, Check } from '@element-plus/icons-vue';
+import { Clock, Check, ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import apiClient from '@/api/client';
 import type { ExamDetail, ExamSubmitResponse, ExamAnswerItem } from '@/api/types';
@@ -145,9 +145,12 @@ onUnmounted(() => {
     <div class="max-w-3xl mx-auto" v-if="exam">
       <!-- 顶部标题与倒计时 -->
       <div class="flex items-center justify-between mb-4 sticky top-0 bg-gray-50 z-10 py-2">
-        <h1 class="text-lg font-bold text-gray-800">
-          试卷 #{{ exam.id }} — {{ exam.position }}
-        </h1>
+        <div class="flex items-center gap-3">
+          <el-button :icon="ArrowLeft" circle @click="router.push('/exam')" />
+          <h1 class="text-lg font-bold text-gray-800">
+            试卷 #{{ exam.id }} — {{ exam.position }}
+          </h1>
+        </div>
         <div class="flex items-center gap-3">
           <div
             class="flex items-center gap-1 px-3 py-1 rounded-full"

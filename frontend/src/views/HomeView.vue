@@ -27,7 +27,6 @@ function goToWorkbench(): void {
 
       <div class="home-actions">
         <button class="home-btn home-btn--primary" @click="goToChat">开始对话</button>
-        <button class="home-btn home-btn--ghost" @click="goToExam">安全考试</button>
         <button class="home-btn home-btn--ghost" @click="goToWorkbench">
           {{ authStore.isAuthenticated ? '进入工作台' : '登录' }}
         </button>

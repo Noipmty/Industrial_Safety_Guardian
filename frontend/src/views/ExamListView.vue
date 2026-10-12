@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Document, Plus, Clock } from '@element-plus/icons-vue';
+import { Document, Plus, Clock, ArrowLeft } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import apiClient from '@/api/client';
 import type {
@@ -118,7 +118,10 @@ onMounted(fetchExams);
   <div class="min-h-screen bg-gray-50 py-4 px-4">
     <div class="max-w-4xl mx-auto">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-xl font-bold text-gray-800">考试中心</h1>
+        <div class="flex items-center gap-3">
+          <el-button :icon="ArrowLeft" circle @click="router.push('/chat')" />
+          <h1 class="text-xl font-bold text-gray-800">考试中心</h1>
+        </div>
         <el-button type="primary" :icon="Plus" @click="openGenerate">
           生成试卷
         </el-button>
