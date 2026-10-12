@@ -141,11 +141,13 @@ function accessLabel(level: string | null | undefined): string {
   flex-direction: column;
   height: calc(100vh - 160px);
   min-height: 420px;
+  overflow: hidden;
 }
 
 .qa-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
   background: #fff;
   border: 1px solid #ebeef5;
@@ -180,7 +182,8 @@ function accessLabel(level: string | null | undefined): string {
 }
 
 .qa-msg__body {
-  max-width: 72%;
+  max-width: 68%;
+  min-width: 0;
 }
 
 .qa-msg__content {
@@ -190,7 +193,8 @@ function accessLabel(level: string | null | undefined): string {
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .qa-msg--user .qa-msg__content {
@@ -220,6 +224,7 @@ function accessLabel(level: string | null | undefined): string {
   gap: 10px;
   margin-top: 12px;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .qa-detail__item {
@@ -227,6 +232,7 @@ function accessLabel(level: string | null | undefined): string {
   padding: 12px 14px;
   background: #f9fafc;
   border-radius: 6px;
+  border: 1px solid #ebeef5;
 }
 
 .qa-detail__head {
@@ -236,6 +242,11 @@ function accessLabel(level: string | null | undefined): string {
   margin-bottom: 6px;
   font-size: 12px;
   color: #909399;
+  flex-wrap: wrap;
+}
+
+.qa-detail__pos {
+  word-break: break-all;
 }
 
 .qa-detail__text {
@@ -244,5 +255,7 @@ function accessLabel(level: string | null | undefined): string {
   line-height: 1.6;
   color: #444;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 </style>
