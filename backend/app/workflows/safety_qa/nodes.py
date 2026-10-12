@@ -434,21 +434,23 @@ def build_fused_context(state: dict) -> tuple[str, list[dict[str, Any]]]:
 def mock_answer(
     question: str, sources: list[dict[str, Any]], memories: list[dict[str, Any]]
 ) -> str:
-    """由融合上下文拼装的确定性离线答案。"""
+    """由融合上下文拼装的确定性离线答案（Markdown 格式）。"""
     if not sources and not memories:
         return (
-            "当前知识库中未检索到与您问题直接相关的资料。"
-            "建议查阅对应岗位操作规程，或咨询现场安全管理人员。"
+            "**当前知识库中未检索到与您问题直接相关的资料。**\n\n"
+            "建议：\n"
+            "1. 查阅对应岗位操作规程\n"
+            "2. 咨询现场安全管理人员"
         )
     parts = [f"关于「{question}」，依据检索到的资料："]
     for i, src in enumerate(sources[:2], start=1):
-        parts.append(f"{_trim(src['text'], 160)}[{i}]")
+        parts.append(f"> {_trim(src['text'], 160)}[{i}]")
     if memories:
         parts.append(
             f"结合您的历史记录：{_trim(str(memories[0]['content']), 80)}"
         )
-    parts.append("以上内容摘自安全知识库，请以现行有效版本规程为准。")
-    return "\n".join(parts)
+    parts.append("---\n*以上内容摘自安全知识库，请以现行有效版本规程为准。*")
+    return "\n\n".join(parts)
 
 
 def make_fuse_respond_node(ctx: QAContext):
