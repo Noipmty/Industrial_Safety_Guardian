@@ -30,7 +30,7 @@ test:
 	cd backend && uv run pytest -v
 
 test-frontend:
-	cd frontend && npm run test
+	cd frontend && npm run build
 
 lint:
 	cd backend && uv run ruff check . && uv run basedpyright

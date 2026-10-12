@@ -72,7 +72,7 @@ uvicorn app.main:app --port 8000
 ```bash
 cd frontend
 npm install
-npm run dev    # http://localhost:5173
+npm run dev    # http://localhost:5174
 ```
 
 ## 生产部署（阿里云 ECS / 4核8G 适配）

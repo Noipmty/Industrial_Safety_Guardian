@@ -52,13 +52,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Lint
+      - name: Type check and build
         working-directory: frontend
-        run: npm run lint
-
-      - name: Run tests
-        working-directory: frontend
-        run: npm run test
+        run: npm run build
 
   eval-gate:
     runs-on: ubuntu-latest

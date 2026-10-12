@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --c-navy: #0b1f33;
+  --c-safety: #ff7a1a;
+  --c-aqua: #14b8a6;
+  --c-graphite: #1f2937;
+  --c-mist: #f5f7fa;
+
+  /* Element Plus 主题定制：primary = 安全橙 */
+  --el-color-primary: #ff7a1a;
+  --el-color-primary-light-3: #ffa04f;
+  --el-color-primary-light-5: #ffc08a;
+  --el-color-primary-light-7: #ffddbf;
+  --el-color-primary-light-8: #ffe9d9;
+  --el-color-primary-light-9: #fff4eb;
+  --el-color-primary-dark-2: #e5680f;
+  --el-border-radius-base: 10px;
+  --el-border-radius-round: 999px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--c-mist);
+  color: var(--c-graphite);
+}
+
+/* 细滚动条 */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(31, 41, 55, 0.18);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-card shadow-card;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .section-title {
+    @apply text-[15px] font-semibold text-navy flex items-center gap-2;
+  }
+  .btn-hero {
+    @apply w-full h-12 rounded-xl text-base font-semibold text-white;
+    background: linear-gradient(135deg, #ff8a33 0%, #ff7a1a 60%, #f26a0a 100%);
+    box-shadow: 0 4px 14px rgba(255, 122, 26, 0.35);
+  }
+}
+
+/* 玻璃拟态点缀 */
+.glass {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 深蓝头部渐变（克制使用） */
+.navy-hero {
+  background: linear-gradient(160deg, #0b1f33 0%, #12314e 78%, #16405f 100%);
+}
+
+/* 简易 markdown 渲染（回答气泡内） */
+.md-answer strong {
+  color: #0b1f33;
+  font-weight: 700;
+}
+.md-answer .ref-badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  background: #fff1e6;
+  color: #e5680f;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  vertical-align: 2px;
+}
+
+/* Element Plus 细节微调 */
+.el-button {
+  font-weight: 600;
+}
+.el-table {
+  --el-table-header-bg-color: #f5f7fa;
+  --el-table-header-text-color: #0b1f33;
+}
