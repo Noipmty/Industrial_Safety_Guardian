@@ -163,11 +163,16 @@ def hybrid_search(
     """
     from pymilvus import AnnSearchRequest, WeightedRanker
 
+    expr = None
+    if doc_types:
+        quoted = ", ".join(f'"{t}"' for t in doc_types)
+        expr = f"doc_type in [{quoted}]"
     dense_req = AnnSearchRequest(
         data=[query_dense],
         anns_field="dense",
         param={"metric_type": "COSINE", "params": {"ef": 128}},
         limit=top_k,
+        expr=expr,
     )
     sparse_data = [{str(token): weight for token, weight in query_sparse.items()}]
     sparse_req = AnnSearchRequest(
@@ -175,13 +180,8 @@ def hybrid_search(
         anns_field="sparse",
         param={"metric_type": "IP", "params": {}},
         limit=top_k,
+        expr=expr,
     )
-    expr = None
-    if doc_types:
-        quoted = ", ".join(f'"{t}"' for t in doc_types)
-        expr = f"doc_type in [{quoted}]"
-        dense_req.expr = expr
-        sparse_req.expr = expr
 
     results = collection.hybrid_search(
         reqs=[dense_req, sparse_req],

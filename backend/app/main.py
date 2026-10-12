@@ -51,6 +51,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("BGE-M3 preloaded")
     except Exception:  # noqa: BLE001 — 预热失败不得阻塞启动
         logger.warning("BGE-M3 preload failed; will lazy-load on demand", exc_info=True)
+    # 幂等初始化 PostgreSQL 记忆库（pgvector 扩展 + episodic/semantic 表 + RLS）
+    try:
+        from app.services.memory import init_memory_db
+        await init_memory_db()
+        logger.info("Memory DB initialized (pgvector + episodic/semantic tables)")
+    except Exception:  # noqa: BLE001 — 记忆库初始化失败不得阻塞启动
+        logger.warning("Memory DB init failed; long-term memory degraded", exc_info=True)
     yield
     logger.info("Shutting down %s", settings.app_name)
     await close_redis()

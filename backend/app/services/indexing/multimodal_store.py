@@ -160,6 +160,7 @@ def visual_search(
         anns_field="dense",
         param={"metric_type": "COSINE", "params": {"ef": 128}},
         limit=top_k * 3,  # 超量召回，供重排使用
+        expr=None,
     )
     sparse_data = [{str(token): weight for token, weight in query_sparse.items()}]
     sparse_req = AnnSearchRequest(
@@ -167,6 +168,7 @@ def visual_search(
         anns_field="sparse",
         param={"metric_type": "IP", "params": {}},
         limit=top_k * 3,
+        expr=None,
     )
     results = collection.hybrid_search(
         reqs=[dense_req, sparse_req],
