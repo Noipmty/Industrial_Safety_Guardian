@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import type { Role, User } from '@/types'
-import { loginByRole, logoutApi } from '@/api/auth'
+import {
+  loginByRole,
+  loginWithPassword,
+  logoutApiMock,
+  logoutApiReal,
+  isRealAuthMode,
+} from '@/api/auth'
 
 const TOKEN_KEY = 'gw_token'
 
@@ -21,9 +27,10 @@ export const useAuthStore = defineStore('auth', {
     isWorker: (s) => s.user?.role === 'worker',
     isAdmin: (s) => s.user?.role === 'admin',
     roleLabel: (s) => (s.user?.role === 'admin' ? '管理员' : '工人'),
+    isRealMode: () => isRealAuthMode(),
   },
   actions: {
-    /** App 挂载时从 localStorage 恢复会话（JWT mock 有效期 2h）。 */
+    /** App 挂载时从 localStorage 恢复会话。 */
     restore() {
       const raw = localStorage.getItem(TOKEN_KEY)
       if (!raw) return
@@ -43,8 +50,23 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem(TOKEN_KEY)
       }
     },
+    /** mock 模式：按角色一键登录 */
     async login(role: Role) {
       const resp = await loginByRole(role)
+      this.token = resp.token
+      this.user = resp.user
+      localStorage.setItem(
+        TOKEN_KEY,
+        JSON.stringify({
+          token: resp.token,
+          user: resp.user,
+          expiresAt: resp.expiresAt,
+        }),
+      )
+    },
+    /** 真实模式：用户名密码登录 */
+    async loginWithCreds(username: string, password: string) {
+      const resp = await loginWithPassword(username, password)
       this.token = resp.token
       this.user = resp.user
       localStorage.setItem(
@@ -59,7 +81,9 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       if (this.token) {
         try {
-          this.logoutNotice = await logoutApi(this.token)
+          this.logoutNotice = isRealAuthMode()
+            ? await logoutApiReal()
+            : await logoutApiMock(this.token)
         } catch {
           this.logoutNotice = ''
         }

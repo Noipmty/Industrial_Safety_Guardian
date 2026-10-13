@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { Role } from '@/types'
 import { useAuthStore } from '@/stores/auth'
+import { isRealMode } from '@/api/http'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -11,6 +12,10 @@ const route = useRoute()
 
 const role = ref<Role>('worker')
 const loading = ref(false)
+
+// 真实模式表单
+const formUser = ref('')
+const formPass = ref('')
 
 const DEMO: Record<Role, { username: string; password: string; name: string; position: string; desc: string }> = {
   worker: {
@@ -40,6 +45,23 @@ async function login(): Promise<void> {
     await auth.login(role.value)
     ElMessage.success(`欢迎回来，${auth.user?.name}`)
     router.push(redirect.value || (role.value === 'admin' ? '/admin/dashboard' : '/worker/home'))
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loginReal(): Promise<void> {
+  if (!formUser.value.trim() || !formPass.value.trim()) {
+    ElMessage.warning('请输入用户名和密码')
+    return
+  }
+  loading.value = true
+  try {
+    await auth.loginWithCreds(formUser.value.trim(), formPass.value)
+    ElMessage.success(`欢迎回来，${auth.user?.name}`)
+    router.push(redirect.value || (auth.isAdmin ? '/admin/dashboard' : '/worker/home'))
+  } catch {
+    ElMessage.error('登录失败，请检查用户名和密码')
   } finally {
     loading.value = false
   }
@@ -79,47 +101,81 @@ async function login(): Promise<void> {
           class="rounded-xl!"
         />
 
-        <div>
-          <p class="text-xs text-graphite/50 mb-2 font-medium">选择演示角色</p>
-          <div class="grid grid-cols-2 gap-2 p-1 bg-mist rounded-xl">
-            <button
-              v-for="r in (['worker', 'admin'] as const)"
-              :key="r"
-              class="h-10 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
-              :class="role === r ? 'bg-white text-navy shadow-card' : 'text-graphite/45'"
-              @click="role = r"
-            >
-              <el-icon><component :is="r === 'worker' ? 'User' : 'Setting'" /></el-icon>
-              {{ r === 'worker' ? '工人端' : '管理端' }}
-            </button>
+        <!-- ===== 真实模式：用户名密码表单 ===== -->
+        <template v-if="isRealMode">
+          <div class="space-y-3">
+            <el-input
+              v-model="formUser"
+              placeholder="用户名"
+              size="large"
+              prefix-icon="User"
+              @keydown.enter="loginReal"
+            />
+            <el-input
+              v-model="formPass"
+              type="password"
+              placeholder="密码"
+              size="large"
+              prefix-icon="Lock"
+              show-password
+              @keydown.enter="loginReal"
+            />
           </div>
-        </div>
+          <button class="btn-hero" :disabled="loading" @click="loginReal">
+            <span v-if="loading" class="inline-flex items-center gap-2">
+              <el-icon class="animate-spin"><Loading /></el-icon>登录中…
+            </span>
+            <span v-else>登录</span>
+          </button>
+          <div class="rounded-xl border border-dashed border-gray-200 bg-mist/60 p-3 space-y-1 text-xs text-graphite/60">
+            <p>测试账号：zhangjg / admin　密码：123456</p>
+          </div>
+        </template>
 
-        <div class="rounded-xl border border-dashed border-gray-200 bg-mist/60 p-3 space-y-1.5 text-xs text-graphite/70">
-          <p class="flex justify-between">
-            <span class="text-graphite/45">演示账号</span>
-            <span class="font-mono font-semibold">{{ DEMO[role].username }} / {{ DEMO[role].password }}</span>
-          </p>
-          <p class="flex justify-between">
-            <span class="text-graphite/45">身份</span>
-            <span>{{ DEMO[role].name }} · {{ DEMO[role].position }}</span>
-          </p>
-          <p class="flex justify-between">
-            <span class="text-graphite/45">可访问</span>
-            <span>{{ DEMO[role].desc }}</span>
-          </p>
-        </div>
+        <!-- ===== Mock 模式：角色切换一键登录 ===== -->
+        <template v-else>
+          <div>
+            <p class="text-xs text-graphite/50 mb-2 font-medium">选择演示角色</p>
+            <div class="grid grid-cols-2 gap-2 p-1 bg-mist rounded-xl">
+              <button
+                v-for="r in (['worker', 'admin'] as const)"
+                :key="r"
+                class="h-10 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
+                :class="role === r ? 'bg-white text-navy shadow-card' : 'text-graphite/45'"
+                @click="role = r"
+              >
+                <el-icon><component :is="r === 'worker' ? 'User' : 'Setting'" /></el-icon>
+                {{ r === 'worker' ? '工人端' : '管理端' }}
+              </button>
+            </div>
+          </div>
 
-        <button class="btn-hero" :disabled="loading" @click="login">
-          <span v-if="loading" class="inline-flex items-center gap-2">
-            <el-icon class="animate-spin"><Loading /></el-icon>登录中…
-          </span>
-          <span v-else>一键登录（JWT mock · 2h 有效）</span>
-        </button>
+          <div class="rounded-xl border border-dashed border-gray-200 bg-mist/60 p-3 space-y-1.5 text-xs text-graphite/70">
+            <p class="flex justify-between">
+              <span class="text-graphite/45">演示账号</span>
+              <span class="font-mono font-semibold">{{ DEMO[role].username }} / {{ DEMO[role].password }}</span>
+            </p>
+            <p class="flex justify-between">
+              <span class="text-graphite/45">身份</span>
+              <span>{{ DEMO[role].name }} · {{ DEMO[role].position }}</span>
+            </p>
+            <p class="flex justify-between">
+              <span class="text-graphite/45">可访问</span>
+              <span>{{ DEMO[role].desc }}</span>
+            </p>
+          </div>
 
-        <p class="text-[11px] text-graphite/40 text-center leading-relaxed">
-          登出后令牌将加入 Redis 黑名单，防止重放攻击
-        </p>
+          <button class="btn-hero" :disabled="loading" @click="login">
+            <span v-if="loading" class="inline-flex items-center gap-2">
+              <el-icon class="animate-spin"><Loading /></el-icon>登录中…
+            </span>
+            <span v-else>一键登录（JWT mock · 2h 有效）</span>
+          </button>
+
+          <p class="text-[11px] text-graphite/40 text-center leading-relaxed">
+            登出后令牌将加入 Redis 黑名单，防止重放攻击
+          </p>
+        </template>
       </div>
 
       <div class="text-center">
