@@ -11,17 +11,30 @@ import type {
   TrendPoint,
   UserItem,
 } from '@/types'
-import { http } from './http'
-import { KPIS, RECENT_QA, TREND_24H, EVALS, FAQS, USERS } from '@/mock/data/admin'
-import { GRAPH_STATS } from '@/mock/data/admin'
+import { http, isRealMode } from './http'
+import {
+  AUDITS,
+  DOCUMENTS,
+  EVALS,
+  FAQS,
+  GRAPH_DATA,
+  GRAPH_STATS,
+  KPIS,
+  RECENT_QA,
+  TREND_24H,
+  USERS,
+} from '@/mock/data/admin'
 import { EXAM_RESULTS } from '@/mock/data/exams'
 
 /**
- * 管理端 API —— 真实后端：/api/v1/admin/*
- * 后端未实现的（FAQ / 评测 / 仪表盘趋势 / 审计简要 / 人工复核）保留 mock 兜底。
+ * 管理端 API。
+ * - mock 模式：直接返回前端内置 mock 数据，完全不发 http 请求
+ * - 真实模式：调用 /api/v1/admin/*，失败兜底 mock 数据
  */
 
-// ---- 仪表盘统计 ----
+// ---------------------------------------------------------------------------
+// DTO（后端返回形状）
+// ---------------------------------------------------------------------------
 
 interface BackendStats {
   total_users: number
@@ -31,7 +44,70 @@ interface BackendStats {
   avg_score: number
 }
 
+interface BackendDoc {
+  id: number
+  title: string
+  doc_type: string
+  version: string
+  status: string
+  created_at: string
+}
+
+interface BackendUser {
+  id: number
+  username: string
+  real_name: string
+  position: string
+  role: string
+  created_at: string
+}
+
+const POSITION_MAP: Record<string, UserItem['position']> = {
+  司钻: '司钻',
+  副司钻: '副司钻',
+  井架工: '井架工',
+  钻工: '钻工',
+  泥浆工: '泥浆工',
+  '-': '-',
+}
+
+interface BackendAuditLog {
+  id: number
+  user_id: number
+  username: string
+  action: string
+  resource_type: string
+  resource_id: string
+  detail: Record<string, unknown> | null
+  ip_address: string | null
+  status: string
+  created_at: string
+}
+
+interface BackendGraphOverview {
+  entities_count?: number
+  relations_count?: number
+  communities_count?: number
+  entities?: Array<{
+    id: string
+    name: string
+    entity_type: string
+    degree?: number
+  }>
+  relations?: Array<{
+    source: string
+    target: string
+    relation: string
+    confidence?: number
+  }>
+}
+
+// ---------------------------------------------------------------------------
+// 仪表盘
+// ---------------------------------------------------------------------------
+
 export async function fetchKpis(): Promise<KpiSet> {
+  if (!isRealMode) return { ...KPIS }
   try {
     await http.get<BackendStats>('/admin/stats')
     return {
@@ -57,18 +133,12 @@ export async function fetchRecentQa(): Promise<RecentQa[]> {
   return RECENT_QA
 }
 
-// ---- 文档 ----
-
-interface BackendDoc {
-  id: number
-  title: string
-  doc_type: string
-  version: string
-  status: string
-  created_at: string
-}
+// ---------------------------------------------------------------------------
+// 文档
+// ---------------------------------------------------------------------------
 
 export async function fetchDocuments(): Promise<DocItem[]> {
+  if (!isRealMode) return DOCUMENTS.map((d) => ({ ...d }))
   try {
     const { data } = await http.get<BackendDoc[]>('/admin/documents')
     return data.map((d) => ({
@@ -82,37 +152,24 @@ export async function fetchDocuments(): Promise<DocItem[]> {
       updatedAt: d.created_at,
     }))
   } catch {
-    return []
+    return DOCUMENTS.map((d) => ({ ...d }))
   }
 }
 
-// ---- FAQ（后端暂无，保留 mock）----
+// ---------------------------------------------------------------------------
+// FAQ（后端暂无，始终 mock）
+// ---------------------------------------------------------------------------
 
 export async function fetchFaqs(): Promise<FaqItem[]> {
   return FAQS.map((f) => ({ ...f }))
 }
 
-// ---- 用户 ----
-
-interface BackendUser {
-  id: number
-  username: string
-  real_name: string
-  position: string
-  role: string
-  created_at: string
-}
-
-const POSITION_MAP: Record<string, UserItem['position']> = {
-  司钻: '司钻',
-  副司钻: '副司钻',
-  井架工: '井架工',
-  钻工: '钻工',
-  泥浆工: '泥浆工',
-  '-': '-',
-}
+// ---------------------------------------------------------------------------
+// 用户
+// ---------------------------------------------------------------------------
 
 export async function fetchUsers(): Promise<UserItem[]> {
+  if (!isRealMode) return USERS.map((u) => ({ ...u }))
   try {
     const { data } = await http.get<BackendUser[]>('/admin/users')
     return data.map((u) => ({
@@ -129,22 +186,12 @@ export async function fetchUsers(): Promise<UserItem[]> {
   }
 }
 
-// ---- 审计 ----
-
-interface BackendAuditLog {
-  id: number
-  user_id: number
-  username: string
-  action: string
-  resource_type: string
-  resource_id: string
-  detail: Record<string, unknown> | null
-  ip_address: string | null
-  status: string
-  created_at: string
-}
+// ---------------------------------------------------------------------------
+// 审计
+// ---------------------------------------------------------------------------
 
 export async function fetchAudits(): Promise<AuditItem[]> {
+  if (!isRealMode) return AUDITS.map((a) => ({ ...a }))
   try {
     const { data } = await http.get<{ items: BackendAuditLog[] }>('/admin/audit-logs', {
       params: { limit: 50 },
@@ -159,40 +206,27 @@ export async function fetchAudits(): Promise<AuditItem[]> {
       time: a.created_at,
     }))
   } catch {
-    return []
+    return AUDITS.map((a) => ({ ...a }))
   }
 }
 
-// ---- 评测（后端暂无，保留 mock）----
+// ---------------------------------------------------------------------------
+// 评测（后端暂无，始终 mock）
+// ---------------------------------------------------------------------------
 
 export async function fetchEvals(): Promise<EvalItem[]> {
   return EVALS.map((e) => ({ ...e }))
 }
 
-// ---- 图谱 ----
-
-interface BackendGraphOverview {
-  entities_count?: number
-  relations_count?: number
-  communities_count?: number
-  entities?: Array<{
-    id: string
-    name: string
-    entity_type: string
-    degree?: number
-  }>
-  relations?: Array<{
-    source: string
-    target: string
-    relation: string
-    confidence?: number
-  }>
-}
+// ---------------------------------------------------------------------------
+// 图谱
+// ---------------------------------------------------------------------------
 
 export async function fetchGraph(): Promise<{
   data: GraphData
   stats: typeof GRAPH_STATS
 }> {
+  if (!isRealMode) return { data: GRAPH_DATA, stats: { ...GRAPH_STATS } }
   try {
     const { data } = await http.get<BackendGraphOverview>('/admin/graph/overview', {
       params: { limit: 150 },
@@ -220,11 +254,13 @@ export async function fetchGraph(): Promise<{
       },
     }
   } catch {
-    return { data: { nodes: [], links: [], anchors: [] }, stats: { ...GRAPH_STATS } }
+    return { data: GRAPH_DATA, stats: { ...GRAPH_STATS } }
   }
 }
 
-// ---- 主观题人工复核（后端暂无，保留 mock）----
+// ---------------------------------------------------------------------------
+// 主观题人工复核（后端暂无，始终 mock）
+// ---------------------------------------------------------------------------
 
 export async function fetchReviewQueue(): Promise<ReviewItem[]> {
   const items: ReviewItem[] = []
