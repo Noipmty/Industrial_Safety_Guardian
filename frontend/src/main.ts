@@ -8,6 +8,7 @@ import '@/styles/index.css'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from '@/stores/auth'
+import { registerRouter } from '@/api/http'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -22,5 +23,8 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 // 在路由守卫和组件挂载之前同步恢复 token，防止刷新后闪回登录页
 useAuthStore().restore()
+
+// 注册 router 引用给 axios 拦截器，401 跳转用 router.push 避免整页刷新
+registerRouter(router)
 
 app.mount('#app')

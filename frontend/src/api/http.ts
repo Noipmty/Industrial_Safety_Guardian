@@ -21,12 +21,17 @@ http.interceptors.request.use((config) => {
       const parsed = JSON.parse(token)
       config.headers.Authorization = `Bearer ${parsed.token}`
     } catch {
-      // legacy: raw token string
       config.headers.Authorization = `Bearer ${token}`
     }
   }
   return config
 })
+
+// 延迟注册 router 的硬引用（避免 http.ts → router → 组件 → stores → api 循环依赖）
+let _router: { push: (to: string) => void } | null = null
+export function registerRouter(router: { push: (to: string) => void }): void {
+  _router = router
+}
 
 http.interceptors.response.use(
   (resp) => resp,
@@ -34,7 +39,9 @@ http.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('gw_token')
       if (location.pathname !== '/login') {
-        location.href = '/login'
+        // 用 router.push 避免整页刷新
+        if (_router) _router.push('/login')
+        else location.href = '/login'
       }
     }
     return Promise.reject(error)
