@@ -86,6 +86,28 @@ function isObjective(q: Question): boolean {
   return q.type !== 'short_answer'
 }
 
+/** 待教师人工复核的主观题数 */
+const pendingCount = computed(
+  () =>
+    result.value?.questions.filter(
+      (q) => q.type === 'short_answer' && q.grading?.reviewStatus === 'pending',
+    ).length ?? 0,
+)
+
+type ReviewStatus = NonNullable<NonNullable<Question['grading']>['reviewStatus']>
+
+const REVIEW_LABEL: Record<ReviewStatus, string> = {
+  auto: 'AI 自动评分',
+  pending: '待人工复核',
+  approved: '教师已复核',
+}
+
+function reviewClass(s: ReviewStatus): string {
+  if (s === 'pending') return 'bg-safety-light text-safety-dark border border-orange-200'
+  if (s === 'approved') return 'bg-teal-50 text-teal-600 border border-teal-200'
+  return 'bg-mist text-graphite/60 border border-gray-200'
+}
+
 onMounted(async () => {
   try {
     await exam.loadResult(examId.value)
@@ -111,6 +133,15 @@ onMounted(async () => {
         v-if="exam.idempotentNotice"
         :title="exam.idempotentNotice"
         type="success"
+        show-icon
+        :closable="false"
+        class="rounded-xl!"
+      />
+      <el-alert
+        v-if="pendingCount > 0"
+        :title="`本卷含 ${pendingCount} 道待人工复核的主观题`"
+        description="当前为 AI 预评分，最终成绩以教师复核为准，复核完成后总分自动更新。"
+        type="warning"
         show-icon
         :closable="false"
         class="rounded-xl!"
@@ -189,6 +220,11 @@ onMounted(async () => {
                       : 'bg-red-50 text-red-500 border border-red-200'
                     : 'bg-safety-light text-safety-dark border border-orange-200'"
                 >得 {{ q.grading?.gotScore ?? 0 }} 分</span>
+                <span
+                  v-if="!isObjective(q)"
+                  class="chip"
+                  :class="reviewClass(q.grading?.reviewStatus ?? 'auto')"
+                >{{ REVIEW_LABEL[q.grading?.reviewStatus ?? 'auto'] }}</span>
               </div>
             </div>
           </div>
@@ -215,6 +251,32 @@ onMounted(async () => {
             <div class="rounded-xl bg-mist p-3">
               <p class="text-[11px] text-graphite/45 mb-1">我的作答</p>
               <p class="text-sm text-graphite leading-relaxed">{{ q.grading?.userAnswer || '（未作答）' }}</p>
+            </div>
+            <!-- RAG 相似度 -->
+            <div
+              v-if="q.grading?.similarity !== undefined"
+              class="rounded-xl border p-3"
+              :class="(q.grading.similarity ?? 0) >= 0.35 ? 'border-teal-100 bg-teal-50/50' : 'border-orange-200 bg-safety-light/60'"
+            >
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="text-graphite/55">RAG 相似度 · 我的作答 vs 规程参考答案</span>
+                <span class="font-bold text-sm" :class="(q.grading.similarity ?? 0) >= 0.35 ? 'text-teal-600' : 'text-safety-dark'">
+                  {{ ((q.grading.similarity ?? 0) * 100).toFixed(1) }}%
+                </span>
+              </div>
+              <el-progress
+                :percentage="Math.round((q.grading.similarity ?? 0) * 100)"
+                :stroke-width="8"
+                :color="(q.grading.similarity ?? 0) >= 0.35 ? '#14B8A6' : '#FF7A1A'"
+                :show-text="false"
+              />
+              <p class="text-[10px] text-graphite/40 mt-1.5">
+                由 BGE-M3 语义向量计算；低于复核阈值 35% 的作答自动转教师人工复核
+              </p>
+            </div>
+            <div class="rounded-xl border border-teal-100 bg-teal-50/40 p-3">
+              <p class="text-[11px] text-teal-600/70 mb-1">规程参考答案</p>
+              <p class="text-xs text-teal-800/90 leading-relaxed">{{ q.answer }}</p>
             </div>
             <div
               v-if="q.grading?.rubricScores && Object.keys(q.grading.rubricScores).length"

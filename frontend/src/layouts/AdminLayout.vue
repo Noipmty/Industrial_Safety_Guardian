@@ -14,6 +14,7 @@ const menu = [
   { index: '/admin/faq', label: 'FAQ 管理', icon: 'ChatDotRound' },
   { index: '/admin/users', label: '用户与权限', icon: 'User' },
   { index: '/admin/question-bank', label: '题库与出卷', icon: 'EditPen' },
+  { index: '/admin/review', label: '主观题复核', icon: 'Finished' },
   { index: '/admin/qa-test', label: '问答检索测试', icon: 'ChatLineSquare' },
   { index: '/admin/graph', label: '知识图谱', icon: 'Share' },
   { index: '/admin/audit', label: '审计日志', icon: 'DocumentChecked' },

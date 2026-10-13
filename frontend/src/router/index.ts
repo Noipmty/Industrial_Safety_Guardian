@@ -90,6 +90,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '题库与出卷' },
       },
       {
+        path: 'review',
+        name: 'admin-review',
+        component: () => import('@/views/admin/ReviewView.vue'),
+        meta: { title: '主观题复核' },
+      },
+      {
         path: 'qa-test',
         name: 'admin-qa-test',
         component: () => import('@/views/admin/QaTestView.vue'),

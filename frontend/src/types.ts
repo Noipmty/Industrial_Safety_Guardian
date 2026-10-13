@@ -121,6 +121,12 @@ export interface Question {
     rubricScores: Record<string, number>
     reason: string
     references: string[]
+    /** 作答与 RAG 检索规程片段 / 参考答案的相似度（0-1，两位小数） */
+    similarity?: number
+    /** 人工复核状态：auto=AI 自动评分；pending=待教师复核；approved=教师已复核 */
+    reviewStatus?: 'auto' | 'pending' | 'approved'
+    /** 复核人（reviewStatus=approved 时有值） */
+    reviewer?: string
   }
 }
 
@@ -147,6 +153,31 @@ export interface ExamResult {
   questions: Question[]
   weakTags: string[]
   rubric: { dimension: string; score: number; full: number }[]
+}
+
+/** 管理端主观题人工复核队列条目 */
+export interface ReviewItem {
+  examId: string
+  examTitle: string
+  worker: string
+  questionId: string
+  stem: string
+  userAnswer: string
+  referenceAnswer: string
+  /** AI 预评分时的 RAG 相似度（0-1） */
+  similarity: number
+  gotScore: number
+  fullScore: number
+  knowledgeTags: string[]
+  reviewStatus: 'auto' | 'pending' | 'approved'
+}
+
+/** 人工复核裁决：confirm=确认 AI 评分；adjust=教师改分 */
+export interface ReviewDecision {
+  examId: string
+  questionId: string
+  action: 'confirm' | 'adjust'
+  newScore?: number
 }
 
 // ---------------------------------------------------------------------------

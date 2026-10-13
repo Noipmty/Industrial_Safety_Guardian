@@ -236,6 +236,8 @@ export const EXAM_RESULTS: Record<string, ExamResult> = {
               '钻井井控技术规程 第 5.3 节：软关井程序应包含发警报、停泵上提、关防喷器、关节流阀试关井、观察汇报五个环节。',
               '井控设备操作手册 第 4 章：液动平板阀应在关闸板前打开，避免憋压。',
             ],
+            similarity: 0.72,
+            reviewStatus: 'pending' as const,
           },
         }
       }
