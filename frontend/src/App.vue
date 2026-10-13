@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-
-const auth = useAuthStore()
-
-onMounted(() => {
-  auth.restore()
-})
+// restore 已在 main.ts 中 app.mount 之前调用，这里无需再调
 </script>
 
 <template>
