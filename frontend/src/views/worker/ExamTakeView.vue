@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useExamStore } from '@/stores/exam'
+import { useAuthStore } from '@/stores/auth'
 import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { Question } from '@/types'
@@ -10,6 +11,7 @@ import type { Question } from '@/types'
 const route = useRoute()
 const router = useRouter()
 const exam = useExamStore()
+const auth = useAuthStore()
 const examId = computed(() => String(route.params.id ?? ''))
 
 const loading = ref(true)
@@ -89,7 +91,7 @@ async function onSubmit(): Promise<void> {
 
 onMounted(async () => {
   try {
-    await exam.loadExams()
+    await exam.loadExams(auth.user?.id ?? 1)
     const info = exam.exams.find((e) => e.id === examId.value)
     if (info?.status === 'finished') {
       ElMessage.info('该考试已完成，为您跳转成绩详情')

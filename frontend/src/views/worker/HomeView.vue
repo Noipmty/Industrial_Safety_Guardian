@@ -9,7 +9,7 @@ const auth = useAuthStore()
 const exam = useExamStore()
 
 onMounted(() => {
-  void exam.loadExams()
+  void exam.loadExams(auth.user?.id ?? 1)
 })
 
 const pendingExams = computed(() => exam.exams.filter((e) => e.status === 'pending').slice(0, 2))

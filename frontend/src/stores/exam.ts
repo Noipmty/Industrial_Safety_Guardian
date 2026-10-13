@@ -29,10 +29,10 @@ export const useExamStore = defineStore('exam', {
     idempotentNotice: '',
   }),
   actions: {
-    async loadExams() {
+    async loadExams(userId: number) {
       this.loading = true
       try {
-        this.exams = await fetchExamList()
+        this.exams = await fetchExamList(userId)
       } finally {
         this.loading = false
       }

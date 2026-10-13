@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useExamStore } from '@/stores/exam'
 import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -7,6 +8,7 @@ import ErrorRetry from '@/components/common/ErrorRetry.vue'
 import type { ExamSummary } from '@/types'
 
 const exam = useExamStore()
+const auth = useAuthStore()
 const tab = ref<'pending' | 'finished'>('pending')
 const failed = ref(false)
 
@@ -15,7 +17,7 @@ const list = computed(() => exam.exams.filter((e) => e.status === tab.value))
 async function load(): Promise<void> {
   failed.value = false
   try {
-    await exam.loadExams()
+    await exam.loadExams(auth.user?.id ?? 1)
   } catch {
     failed.value = true
   }
