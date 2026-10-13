@@ -1,7 +1,10 @@
-import type { RetrievalStep } from '@/types'
+﻿import type { RetrievalStep } from '@/types'
 import { API_BASE_URL, isRealMode } from './http'
 import { QA_KNOWLEDGE } from '@/mock/data/knowledge'
 import { buildPlan, nextId, runMockSse } from '@/mock/sse'
+
+/** fetch 用的 baseURL —— 空则默认走同域 nginx 反代 /api/v1 */
+const FETCH_BASE = API_BASE_URL || '/api/v1'
 
 /**
  * 安全问答 API。
@@ -102,7 +105,7 @@ function streamChatReal(
     for (let attempt = 1; attempt <= MAX_FETCH_RETRIES; attempt++) {
       if (controller.signal.aborted) return
       try {
-        const url = `${API_BASE_URL}/chat`
+        const url = `${FETCH_BASE}/chat`
         const body: Record<string, unknown> = {
           message: question,
           user_id: opts.userId,
@@ -237,7 +240,7 @@ export function newMessageId(role: 'user' | 'assistant'): string {
 export async function fetchSessions(userId: number): Promise<ChatSession[]> {
   const token = getToken()
   const resp = await fetch(
-    `${API_BASE_URL}/chat/sessions?user_id=${userId}`,
+    `${FETCH_BASE}/chat/sessions?user_id=${userId}`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -249,7 +252,7 @@ export async function fetchHistoryMessages(
 ): Promise<ChatHistoryMessage[]> {
   const token = getToken()
   const resp = await fetch(
-    `${API_BASE_URL}/chat/sessions/${sessionId}/messages`,
+    `${FETCH_BASE}/chat/sessions/${sessionId}/messages`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -259,7 +262,7 @@ export async function fetchHistoryMessages(
 export async function finalizeSession(sessionId: string): Promise<string> {
   const token = getToken()
   const resp = await fetch(
-    `${API_BASE_URL}/chat/sessions/${sessionId}/finalize`,
+    `${FETCH_BASE}/chat/sessions/${sessionId}/finalize`,
     { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
@@ -270,7 +273,7 @@ export async function finalizeSession(sessionId: string): Promise<string> {
 export async function deleteSession(sessionId: string): Promise<void> {
   const token = getToken()
   const resp = await fetch(
-    `${API_BASE_URL}/chat/sessions/${sessionId}`,
+    `${FETCH_BASE}/chat/sessions/${sessionId}`,
     { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} },
   )
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)

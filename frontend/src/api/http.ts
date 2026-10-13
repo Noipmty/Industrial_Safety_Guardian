@@ -2,12 +2,18 @@ import axios from 'axios'
 
 /**
  * axios 实例。
- * - VITE_API_BASE_URL 为空 → mock 演示模式（不发起真实请求）
- * - VITE_API_BASE_URL 有值 → 对接真实后端
+ *
+ * 模式判断（优先级从高到低）：
+ * 1. VITE_USE_MOCK=true  → 强制 mock 演示模式（开发本地演示用）
+ * 2. VITE_API_BASE_URL 有值 → 对接指定后端
+ * 3. 否则 → 默认真实模式，用相对路径 /api/v1（走 nginx 反代）
+ *
+ * 生产环境 ECS 上 .env 不需要设任何东西，就是默认的真实模式。
  */
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export const isRealMode = API_BASE_URL.length > 0
+export const isRealMode = !USE_MOCK
 
 export const http = axios.create({
   baseURL: API_BASE_URL || '/api/v1',
