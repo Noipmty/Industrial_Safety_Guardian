@@ -9,6 +9,7 @@ RUN npm config set registry https://registry.npmmirror.com \
     && npm ci --no-audit --no-fund
 
 COPY . .
+ENV VITE_USE_MOCK=true
 RUN npm run build
 
 # ---------- 阶段 2：nginx 静态资源 ----------
