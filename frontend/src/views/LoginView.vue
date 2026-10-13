@@ -20,14 +20,14 @@ const formPass = ref('')
 const DEMO: Record<Role, { username: string; password: string; name: string; position: string; desc: string }> = {
   worker: {
     username: 'zhangjg',
-    password: '123456',
+    password: 'zhangjg123',
     name: '张建国',
     position: '司钻',
     desc: '问答 / 考试 / 成绩',
   },
   admin: {
     username: 'admin',
-    password: '123456',
+    password: 'admin8888',
     name: '刘安全',
     position: '安全员',
     desc: '仪表盘 / 全部管理功能',
@@ -128,7 +128,7 @@ async function loginReal(): Promise<void> {
             <span v-else>登录</span>
           </button>
           <div class="rounded-xl border border-dashed border-gray-200 bg-mist/60 p-3 space-y-1 text-xs text-graphite/60">
-            <p>测试账号：zhangjg / admin　密码：123456</p>
+            <p>测试账号：zhangjg / admin　密码：zhangjg123 / admin8888</p>
           </div>
         </template>
 
