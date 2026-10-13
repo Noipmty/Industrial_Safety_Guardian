@@ -6,8 +6,10 @@ import { buildPlan, nextId, runMockSse } from '@/mock/sse'
 /**
  * 安全问答 API。
  * - mock 模式：runMockSse 在浏览器侧模拟 SSE 步骤流 + 逐字回答
- * - 真实模式：POST /chat (SSE)，GET /chat/sessions 等会话管理
+ * - 真实模式：POST /chat (SSE)，3 次重试全败后自动降级 mock SSE
  */
+
+const MAX_FETCH_RETRIES = 3
 
 export interface ChatStreamHandlers {
   onSteps: (steps: RetrievalStep[]) => void
@@ -68,116 +70,142 @@ function streamChatMock(
 }
 
 // ---------------------------------------------------------------------------
-// 真实模式：fetch SSE 流式
+// 真实模式：fetch SSE 流式，3 次重试全败后降级 mock
 // ---------------------------------------------------------------------------
+
+function getToken(): string {
+  try {
+    const raw = localStorage.getItem('gw_token')
+    return raw ? JSON.parse(raw).token : ''
+  } catch {
+    return localStorage.getItem('gw_token') ?? ''
+  }
+}
 
 function streamChatReal(
   question: string,
   handlers: ChatStreamHandlers,
   opts: { sessionId: string | null; userId: number },
 ): () => void {
-  // 真实后端不暴露逐步检索进度，前端展示简化步骤流
   const steps: RetrievalStep[] = [
     { key: 'retrieve', label: '检索知识库', status: 'pending', detail: '混合检索 + GraphRAG' },
     { key: 'generate', label: '生成回答', status: 'pending', detail: 'LLM 融合引用' },
   ]
   handlers.onSteps(steps)
-  let stepIdx = 0
-  handlers.onStepDone(stepIdx, '检索完成')
-  stepIdx = 1
 
   const controller = new AbortController()
-  const token = (() => {
-    try {
-      const raw = localStorage.getItem('gw_token')
-      return raw ? JSON.parse(raw).token : ''
-    } catch {
-      return localStorage.getItem('gw_token') ?? ''
-    }
-  })()
+  const token = getToken()
+
+  let fulfilled = false
 
   void (async () => {
-    try {
-      const url = `${API_BASE_URL}/chat`
-      const body: Record<string, unknown> = {
-        message: question,
-        user_id: opts.userId,
-        stream: true,
-      }
-      if (opts.sessionId) body.session_id = opts.sessionId
+    for (let attempt = 1; attempt <= MAX_FETCH_RETRIES; attempt++) {
+      if (controller.signal.aborted) return
+      try {
+        const url = `${API_BASE_URL}/chat`
+        const body: Record<string, unknown> = {
+          message: question,
+          user_id: opts.userId,
+          stream: true,
+        }
+        if (opts.sessionId) body.session_id = opts.sessionId
 
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        })
 
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => resp.statusText)
-        throw new Error(`HTTP ${resp.status}: ${errText}`)
-      }
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => resp.statusText)
+          throw new Error(`HTTP ${resp.status}: ${errText}`)
+        }
 
-      const reader = resp.body?.getReader()
-      if (!reader) throw new Error('No response body')
+        const reader = resp.body?.getReader()
+        if (!reader) throw new Error('No response body')
 
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let fullText = ''
-      let sourcesJson = ''
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let fullText = ''
+        let sourcesJson = ''
+        let stepIdx = 0
+        handlers.onStepDone(stepIdx, '检索完成')
+        stepIdx = 1
 
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
+        for (;;) {
+          if (controller.signal.aborted) return
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
 
-        // SSE: 以 \n\n 分隔事件
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() ?? ''
+          const parts = buffer.split('\n\n')
+          buffer = parts.pop() ?? ''
 
-        for (const part of parts) {
-          const line = part.trim()
-          if (!line.startsWith('data: ')) continue
-          const dataStr = line.slice(6)
-          if (dataStr === '[DONE]') continue
+          for (const part of parts) {
+            const line = part.trim()
+            if (!line.startsWith('data: ')) continue
+            const dataStr = line.slice(6)
+            if (dataStr === '[DONE]') continue
 
-          try {
-            const evt = JSON.parse(dataStr) as {
-              type: string
-              content: string
-            }
-            if (evt.type === 'token') {
-              fullText += evt.content
-              handlers.onDelta(evt.content)
-            } else if (evt.type === 'sources') {
-              sourcesJson = evt.content
-              handlers.onSources?.(evt.content)
-            } else if (evt.type === 'done') {
-              if (stepIdx < steps.length) {
-                steps[stepIdx].status = 'done'
-                handlers.onStepDone(stepIdx)
+            try {
+              const evt = JSON.parse(dataStr) as {
+                type: string
+                content: string
               }
+              if (evt.type === 'token') {
+                fullText += evt.content
+                handlers.onDelta(evt.content)
+              } else if (evt.type === 'sources') {
+                sourcesJson = evt.content
+                handlers.onSources?.(evt.content)
+              } else if (evt.type === 'done') {
+                if (stepIdx < steps.length) {
+                  steps[stepIdx].status = 'done'
+                  handlers.onStepDone(stepIdx)
+                }
+              }
+            } catch {
+              // 非 JSON 行，跳过
             }
-          } catch {
-            // 非 JSON 行，跳过
           }
         }
-      }
 
-      // 后端可能在非标准的 response header 或首次返回中带 session_id
-      // 从 response 中提取（chat.py 在 _touch_session_index 中存入 Redis，
-      // 但 SSE 首次返回不显式带 session_id —— 前端用自己传的或新生成的）
-      handlers.onDone(fullText || '(空响应)')
-      if (sourcesJson) handlers.onSources?.(sourcesJson)
-    } catch (err) {
-      if (controller.signal.aborted) return
-      const msg = err instanceof Error ? err.message : String(err)
-      handlers.onDelta(`\n\n[请求失败: ${msg}]`)
-      handlers.onDone('')
+        fulfilled = true
+        handlers.onDone(fullText || '(空响应)')
+        if (sourcesJson) handlers.onSources?.(sourcesJson)
+        return // 成功，退出重试循环
+      } catch (err) {
+        if (controller.signal.aborted) return
+        const msg = err instanceof Error ? err.message : String(err)
+        if (attempt < MAX_FETCH_RETRIES) {
+          handlers.onDelta(`\n[第 ${attempt} 次请求失败: ${msg}，重试中…]\n`)
+        } else {
+          handlers.onDelta(`\n[3 次重试均失败，降级为本地知识库兜底回答]\n\n`)
+        }
+      }
     }
+
+    if (fulfilled || controller.signal.aborted) return
+
+    // ---- 降级：3 次重试全败，自动走 mock SSE ----
+    handlers.onDelta('\n--- 以下为本地知识库兜底回答 ---\n\n')
+    const mockCancel = streamChatMock(question, {
+      onSteps: (s) => {
+        // 追加 mock 步骤到已有步骤后面
+        handlers.onSteps([...steps, ...s])
+      },
+      onStepDone: (i, detail) => {
+        handlers.onStepDone(i + steps.length, detail)
+      },
+      onDelta: (t) => handlers.onDelta(t),
+      onDone: (fullText) => handlers.onDone(fullText),
+    })
+    // 把 mock 的 cancel 合并到外层 controller
+    controller.signal.addEventListener('abort', () => mockCancel())
   })()
 
   return () => controller.abort()
@@ -207,14 +235,7 @@ export function newMessageId(role: 'user' | 'assistant'): string {
 // ---------------------------------------------------------------------------
 
 export async function fetchSessions(userId: number): Promise<ChatSession[]> {
-  const token = (() => {
-    try {
-      const raw = localStorage.getItem('gw_token')
-      return raw ? JSON.parse(raw).token : ''
-    } catch {
-      return localStorage.getItem('gw_token') ?? ''
-    }
-  })()
+  const token = getToken()
   const resp = await fetch(
     `${API_BASE_URL}/chat/sessions?user_id=${userId}`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -226,14 +247,7 @@ export async function fetchSessions(userId: number): Promise<ChatSession[]> {
 export async function fetchHistoryMessages(
   sessionId: string,
 ): Promise<ChatHistoryMessage[]> {
-  const token = (() => {
-    try {
-      const raw = localStorage.getItem('gw_token')
-      return raw ? JSON.parse(raw).token : ''
-    } catch {
-      return localStorage.getItem('gw_token') ?? ''
-    }
-  })()
+  const token = getToken()
   const resp = await fetch(
     `${API_BASE_URL}/chat/sessions/${sessionId}/messages`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -243,14 +257,7 @@ export async function fetchHistoryMessages(
 }
 
 export async function finalizeSession(sessionId: string): Promise<string> {
-  const token = (() => {
-    try {
-      const raw = localStorage.getItem('gw_token')
-      return raw ? JSON.parse(raw).token : ''
-    } catch {
-      return localStorage.getItem('gw_token') ?? ''
-    }
-  })()
+  const token = getToken()
   const resp = await fetch(
     `${API_BASE_URL}/chat/sessions/${sessionId}/finalize`,
     { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -261,14 +268,7 @@ export async function finalizeSession(sessionId: string): Promise<string> {
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const token = (() => {
-    try {
-      const raw = localStorage.getItem('gw_token')
-      return raw ? JSON.parse(raw).token : ''
-    } catch {
-      return localStorage.getItem('gw_token') ?? ''
-    }
-  })()
+  const token = getToken()
   const resp = await fetch(
     `${API_BASE_URL}/chat/sessions/${sessionId}`,
     { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} },
